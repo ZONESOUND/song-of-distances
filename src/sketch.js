@@ -1,6 +1,19 @@
-import {receiveOSC, emitOSC, isSocketConnect} from './socketUsage';
+import {receiveOSC, emitOSC} from './socketUsage';
 import {initSound, triggerSound} from './sound';
-//import {earthLocRef} from './firebase';
+import {runtimeConfig} from './runtimeConfig';
+import {
+    encodeRadioValue,
+    encodeTriggerValue,
+    RADIO_ADDRESS,
+    readTriggerId,
+    TRIGGER_ADDRESS,
+} from './oscProtocol';
+import {
+    calcLayerFromDistance,
+    calcRadarAngle,
+    calcRingDiameter,
+    didRadarCross,
+} from './spatialRules';
 
 export default function sketch (p) {
     let radioDeg = 0;
@@ -12,14 +25,11 @@ export default function sketch (p) {
     let lightCounter = 0;
     let rDistArr = [];
     let myId;
-    let testBtn;
 
     receiveOSC((data)=>{
-        if (data.address == '/gps/trigger'){
-            let scanId = JSON.parse(data.args[0].value).id
-            if (scanId == myId){
-                lightCounter = 0;
-            }
+        let scanId = readTriggerId(data);
+        if (scanId && scanId === myId){
+            lightCounter = 0;
         }
     });
 
@@ -88,9 +98,9 @@ export default function sketch (p) {
         lastRadioDeg = radioDeg;
         radioDeg = calcDeg(configData.radioSpeed, p.frameCount);
 
-        //emit radio
-        // if (p.frameCount % 30 === 0)
-        //     emitOSC('/gps/radio', (radioDeg/Math.PI*180).toFixed(5)*1.0)
+        if (runtimeConfig.oscOutputEnabled && p.frameCount % 30 === 0) {
+            emitOSC(RADIO_ADDRESS, encodeRadioValue(radioDeg));
+        }
 
         lightCounter++;
         p.background(255/lightCounter, 100);
@@ -208,21 +218,12 @@ function drawDataPoint(p, dataPoint, radioDeg, lastRadioDeg, configData) {
             return;
         }
         angleDelta = dataDegree - radioDeg;
-        let scanned = ((lastRadioDeg - dataDegree) * (radioDeg - dataDegree) <= 0)
-                        && Math.abs(lastRadioDeg - radioDeg) < 1;
+        let scanned = didRadarCross(lastRadioDeg, radioDeg, dataDegree);
         
         if (scanned){
             if (lastTrigger !== e){
                 //console.log(e);
-                let d2 = JSON.stringify({
-                    degree: e.degree,
-                    dist: e.dist,
-                    id: e.key,
-                    data: e.data,
-                    leave: e.leave,
-                    timeStamp: e.timeStamp,
-                    time_to_now_second: timeDelta,
-                })               
+                let d2 = encodeTriggerValue(e, e.timeStamp + timeDelta);
                 let d = {  
                     //layer: Math.ceil(Math.pow(e.dist/0.5, 1/configData.globalPow)*10/configData.globalScale),
                     //layer: Math.ceil(Math.pow(e.dist/0.5, 1/configData.globalPow)*10/configData.globalScale),
@@ -233,7 +234,9 @@ function drawDataPoint(p, dataPoint, radioDeg, lastRadioDeg, configData) {
                     pos: e.pos,
                 }
                 triggerSound(d);
-                //emitOSC('/gps/trigger', d2);
+                if (runtimeConfig.oscOutputEnabled) {
+                    emitOSC(TRIGGER_ADDRESS, d2);
+                }
             }
             lastTrigger = e;
         }
@@ -295,11 +298,11 @@ function drawDataPoint(p, dataPoint, radioDeg, lastRadioDeg, configData) {
 }
 
 function calcR(i, globalScale, globalPow) {
-    return Math.pow(Math.abs(i * globalScale / 10), globalPow)*0.5;
+    return calcRingDiameter(i, globalScale, globalPow);
 }
 
 function calcReverseR(dist, globalScale, globalPow) {
-    return Math.pow(dist/0.25, 1/globalPow)*10/globalScale;
+    return calcLayerFromDistance(dist, globalScale, globalPow);
   //return Math.ceil(Math.pow(dist/0.25, 1/globalPow)*10/globalScale);
 }
 
@@ -363,7 +366,7 @@ function calcWaveR(r, frameCount, i, o, mult) {
 }
 
 function calcDeg(radioSpeed, frameCount) {
-    return (radioSpeed * frameCount / 60) % (2*Math.PI) - Math.PI;
+    return calcRadarAngle(radioSpeed, frameCount);
 }
 
 function getPos(p, configData, obj){

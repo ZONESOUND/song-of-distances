@@ -1,68 +1,52 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# Song of Distance — revival branch
 
-## Available Scripts
+This branch restores the maintainable source for the installation while keeping
+the published `gh-pages` branch untouched.
 
-In the project directory, you can run:
+`npm run deploy` is intentionally blocked on this branch. Publishing must be a
+separate, explicit release step after local and staging validation.
 
-### `npm start`
+## Safe local start
 
-Runs the app in the development mode.<br />
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+```sh
+npm ci --legacy-peer-deps --no-audit
+npm start
+```
 
-The page will reload if you make edits.<br />
-You will also see any lint errors in the console.
+Open <http://localhost:3000>. With no `.env.local`, the application uses fixed
+GPS, deterministic current/history fixtures, no Firebase connection, and no
+Socket.IO connection.
 
-### `npm test`
+Run the checks with:
 
-Launches the test runner in the interactive watch mode.<br />
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```sh
+npm test -- --watchAll=false
+npm run build
+```
 
-### `npm run build`
+The build still uses the legacy CRA/Webpack architecture. Webpack and Firebase
+remain in their original major versions, with compatibility updates that allow
+installation and builds on the current Mac/Node environment.
 
-Builds the app for production to the `build` folder.<br />
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Exhibition connection
 
-The build is minified and the filenames include the hashes.<br />
-Your app is ready to be deployed!
+Copy `.env.example` to `.env.local` and opt in to a local Socket.IO relay:
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```text
+REACT_APP_SOCKET_MODE=client
+REACT_APP_SOCKET_URL=http://127.0.0.1:3001
+REACT_APP_OSC_OUTPUT=on
+```
 
-### `npm run eject`
+See [docs/exhibition-protocol.md](docs/exhibition-protocol.md) for the legacy
+`/gps/radio` and `/gps/trigger` message contract.
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+## Firebase
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Local development should use fixture mode or a separate staging project. There
+are no production Firebase credentials in this branch. Production database URLs
+and project IDs are completely blocked until authentication, database rules, and
+staging validation are complete.
 
-Instead, it will copy all the configuration files and the transitive dependencies (Webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/code-splitting
-
-### Analyzing the Bundle Size
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size
-
-### Making a Progressive Web App
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app
-
-### Advanced Configuration
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/advanced-configuration
-
-### Deployment
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/deployment
-
-### `npm run build` fails to minify
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
+Ending a session marks it as historical with `leave: true` and `endedAt`; session
+nodes are never deleted by the web application.

@@ -1,6 +1,7 @@
 import Tone from 'tone';
 import C3 from './sound/C3_mid_long_44.1k.mp3';
 import C2 from './sound/C2_low_short_44.1k.mp3';
+import {resolveSoundEvent} from './soundRules';
 
 let mode = 3; 
 //let octave = 'CDEFGAB'; //start from index 1 so put C at second 
@@ -97,14 +98,14 @@ let genFMSynth = (ind) => {
 
 export let triggerSound = (d) => {
 
-    let layer = Math.ceil(d.layer);
-    let dis = Math.max(0.5, layer - d.layer);
-    layer = scaleNumber(layer);
+    const soundEvent = resolveSoundEvent(d, Math.random());
+    let layer = soundEvent.layerIndex;
+    let dis = soundEvent.distanceScalar;
     let note = 0;
     let freq = 0;
     switch (mode) {
         case 0:
-            note = getNote(layer);
+            note = soundEvent.note;
             freq = Tone.Frequency(note).toFrequency()*0.8*dis;
             break;
         case 1:
@@ -116,7 +117,7 @@ export let triggerSound = (d) => {
             freq = note*0.8*dis;
             break;
         case 3:
-            note = getNote(layer);
+            note = soundEvent.note;
             freq = Tone.Frequency(note).toFrequency()*dis;
             break;
         default:
@@ -130,8 +131,8 @@ export let triggerSound = (d) => {
     if (d.leave !== true) {
         //mode ? note : Tone.Frequency(note)
         if (mode >= 2) {
-            console.log('~')
-            samplerLong.connect(filter).triggerAttack(note); 
+            if (samplerLong.loaded)
+                samplerLong.connect(filter).triggerAttack(note);
         }
         else triggerActive(note);
         //triggerMetal(mode ? note : Tone.Frequency(note), dis*200+600, 12);
@@ -141,7 +142,8 @@ export let triggerSound = (d) => {
     if (mode >= 2) {
         if (notePlaying[layer]) return;
         notePlaying[layer] = true;
-        samplerShort.connect(filter).triggerAttack(note);
+        if (samplerShort.loaded)
+            samplerShort.connect(filter).triggerAttack(note);
         setTimeout(()=>{
             notePlaying[layer] = false;
         }, noteDuration);
@@ -256,18 +258,6 @@ let setAttackRelease = (filter, ind, note) => {
 let setRelease = (ind) => {
     noteSynth[ind].triggerRelease();
     noteTimeout[ind] = null;
-}
-
-let scaleNumber = (number) => {
-    number = Math.floor(Math.pow(number, 1/1) + Math.floor(Math.random()*3) -1) - 1;
-    return Math.max(Math.min(number, noteNumber-1), 0);
-    //not sure if i need to use max(..,0);
-}
-
-let getNote = (number) => {
-    let len = octave.length;
-    return octave[number%len]+
-        Math.min(octaveMax, Math.floor(octaveStart+number/len));
 }
 
 let getFreq = (number) => {

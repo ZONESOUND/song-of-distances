@@ -168,6 +168,9 @@ module.exports = function(webpackEnv) {
       // changing JS code would still trigger a refresh.
     ].filter(Boolean),
     output: {
+      // Webpack 4 defaults to MD4, which modern Node/OpenSSL versions disable.
+      // SHA-256 keeps the legacy build reproducible without a global crypto flag.
+      hashFunction: 'sha256',
       // The build folder.
       path: isEnvProduction ? paths.appBuild : undefined,
       // Add /* filename */ comments to generated require()s in the output.

@@ -1,22 +1,32 @@
-let gpsPermission = null;
+import {runtimeConfig} from './runtimeConfig';
+
 export var gpsData = {};
 let id;
 let watchCallBack = null;
 export let setupGPS = (callback) => {
     watchCallBack = callback;
     console.log('setup gps');
+    if (runtimeConfig.locationMode === 'fixture') {
+      gpsData = {
+        ...runtimeConfig.fixedLocation,
+        timeStamp: Date.now(),
+        date: Date(Date.now()),
+        leave: false
+      };
+      if (watchCallBack) watchCallBack(true);
+      return;
+    }
     let options = {
       enableHighAccuracy: true,
       timeout: 60000,
       maximumAge: Infinity
     };
-    id = navigator.geolocation.watchPosition(showPosition, watchPositionError);
+    id = navigator.geolocation.watchPosition(showPosition, watchPositionError, options);
 }
 export let gpsHelp = getSettingStr();
 
 function showPosition(position) {
     //console.log('yo!');
-    gpsPermission = true;
     gpsData = {
         lat: position.coords.latitude,
         lon: position.coords.longitude,
@@ -24,11 +34,10 @@ function showPosition(position) {
         date: Date(Date.now()),
         leave: false
     }
-    watchCallBack(true);
+    if (watchCallBack) watchCallBack(true);
 }
     
 function watchPositionError(positionError)  {
-    gpsPermission = false;
     switch (positionError.code) {
         // PERMISSION_DENIED
         case 1:
@@ -45,7 +54,7 @@ function watchPositionError(positionError)  {
         default:
           break;
     }
-    watchCallBack(false);
+    if (watchCallBack) watchCallBack(false);
 }
 
 function getSettingStr() {
@@ -61,5 +70,7 @@ function getSettingStr() {
 }
 
 export let clearWatchGPS = () => {
-  navigator.geolocation.clearWatch(id);
+  if (id !== undefined && navigator.geolocation) {
+    navigator.geolocation.clearWatch(id);
+  }
 }
