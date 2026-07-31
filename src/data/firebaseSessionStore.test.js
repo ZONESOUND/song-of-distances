@@ -11,6 +11,7 @@ const createFakeFirebase = () => {
   const releaseActivation = deferred();
   const state = {};
   const writes = [];
+  const disconnectPatches = {};
   let connectedHandler = null;
 
   const sessionRef = (id) => ({
@@ -19,9 +20,11 @@ const createFakeFirebase = () => {
         writes.push({type: 'disconnect-update', id, patch});
         activationStarted.resolve();
         await releaseActivation.promise;
+        disconnectPatches[id] = patch;
       },
       async cancel() {
         writes.push({type: 'disconnect-cancel', id});
+        delete disconnectPatches[id];
       },
     }),
     async update(patch) {
@@ -61,6 +64,11 @@ const createFakeFirebase = () => {
     activationStarted,
     releaseActivation,
     getConnectedHandler: () => connectedHandler,
+    simulateDisconnect() {
+      Object.entries(disconnectPatches).forEach(([id, patch]) => {
+        state[id] = {...(state[id] || {}), ...patch};
+      });
+    },
   };
 };
 
@@ -90,4 +98,72 @@ it('serializes an in-flight activation before ending the session', async () => {
     endedAt: 'SERVER_TIMESTAMP',
   });
   expect(fake.getConnectedHandler()).toBeNull();
+});
+
+it('updates the active session in place and keeps its final coordinates', async () => {
+  const fake = createFakeFirebase();
+  const store = createFirebaseSessionStore({
+    firebase: {
+      projectId: 'song-of-distance-staging',
+      databaseURL: 'https://song-of-distance-staging.firebaseio.com',
+    },
+  }, fake.firebase);
+  fake.releaseActivation.resolve();
+
+  await store.startSession('session-a', {
+    lat: 25.033,
+    lon: 121.5654,
+    timeStamp: 1700000000000,
+    date: 'start',
+  });
+  await store.updatePosition('session-a', {
+    lat: 25.091,
+    lon: 121.602,
+    timeStamp: 1700000005000,
+    date: 'moved',
+  });
+  await store.endSession('session-a');
+
+  expect(Object.keys(fake.state)).toEqual(['session-a']);
+  expect(fake.state['session-a']).toMatchObject({
+    lat: 25.091,
+    lon: 121.602,
+    timeStamp: 1700000005000,
+    leave: true,
+    endedAt: 'SERVER_TIMESTAMP',
+  });
+});
+
+it('keeps the last synchronized coordinates when Firebase disconnects', async () => {
+  const fake = createFakeFirebase();
+  const store = createFirebaseSessionStore({
+    firebase: {
+      projectId: 'song-of-distance-staging',
+      databaseURL: 'https://song-of-distance-staging.firebaseio.com',
+    },
+  }, fake.firebase);
+  fake.releaseActivation.resolve();
+
+  await store.startSession('session-a', {
+    lat: 25.033,
+    lon: 121.5654,
+    timeStamp: 1700000000000,
+    date: 'start',
+  });
+  await store.updatePosition('session-a', {
+    lat: 25.091,
+    lon: 121.602,
+    timeStamp: 1700000005000,
+    date: 'moved',
+  });
+  fake.simulateDisconnect();
+
+  expect(Object.keys(fake.state)).toEqual(['session-a']);
+  expect(fake.state['session-a']).toMatchObject({
+    lat: 25.091,
+    lon: 121.602,
+    timeStamp: 1700000005000,
+    leave: true,
+    endedAt: 'SERVER_TIMESTAMP',
+  });
 });

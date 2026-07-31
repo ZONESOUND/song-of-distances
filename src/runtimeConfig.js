@@ -37,6 +37,13 @@ export const runtimeConfig = {
   fixtureCount: Math.max(0, Math.floor(
     readNumber(process.env.REACT_APP_FIXTURE_COUNT, 180)
   )),
+  fixtureMotionEnabled: readBoolean(
+    process.env.REACT_APP_FIXTURE_MOTION,
+    dataMode === 'fixture'
+  ),
+  fixtureMotionIntervalMs: Math.max(250, Math.floor(
+    readNumber(process.env.REACT_APP_FIXTURE_MOTION_INTERVAL, 1500)
+  )),
   socketMode,
   socketUrl: (process.env.REACT_APP_SOCKET_URL || '').trim(),
   oscOutputEnabled: readBoolean(process.env.REACT_APP_OSC_OUTPUT),
@@ -55,20 +62,44 @@ export const runtimeConfig = {
   },
 };
 
-const databaseUrlTargetsProduction = (databaseURL) => {
+const parseDatabaseUrl = (databaseURL) => {
   try {
     const parsed = new URL(databaseURL);
-    const hostname = parsed.hostname.toLowerCase();
-    const namespace = parsed.searchParams.get('ns');
-    return namespace === PRODUCTION_PROJECT_ID ||
-      hostname === `${PRODUCTION_PROJECT_ID}.firebaseio.com` ||
-      (
-        hostname.startsWith(`${PRODUCTION_PROJECT_ID}-`) &&
-        hostname.endsWith('.firebasedatabase.app')
-      );
+    return {
+      protocol: parsed.protocol,
+      hostname: parsed.hostname.toLowerCase().replace(/\.$/, ''),
+      namespace: parsed.searchParams.get('ns'),
+    };
   } catch (error) {
     throw new Error('REACT_APP_FIREBASE_DATABASE_URL must be a valid URL.');
   }
+};
+
+const databaseUrlMatchesProject = (databaseURL, projectId) => {
+  const {protocol, hostname, namespace} = parseDatabaseUrl(databaseURL);
+  if (protocol !== 'https:') return false;
+  if (namespace && namespace !== projectId) return false;
+  return hostname === `${projectId}.firebaseio.com` ||
+    hostname === `${projectId}-default-rtdb.firebaseio.com` ||
+    (
+      hostname.startsWith(`${projectId}-`) &&
+      hostname.endsWith('.firebasedatabase.app')
+    );
+};
+
+const databaseUrlTargetsProduction = (databaseURL) => {
+  const {hostname, namespace} = parseDatabaseUrl(databaseURL);
+  const productionPrefix = `${PRODUCTION_PROJECT_ID}-`;
+  return namespace === PRODUCTION_PROJECT_ID ||
+    Boolean(namespace && namespace.startsWith(productionPrefix)) ||
+    hostname === `${PRODUCTION_PROJECT_ID}.firebaseio.com` ||
+    (
+      hostname.startsWith(productionPrefix) &&
+      (
+        hostname.endsWith('.firebaseio.com') ||
+        hostname.endsWith('.firebasedatabase.app')
+      )
+    );
 };
 
 export const assertFirebaseAccessIsSafe = (config = runtimeConfig) => {
@@ -80,20 +111,19 @@ export const assertFirebaseAccessIsSafe = (config = runtimeConfig) => {
     );
   }
 
-  const projectTargetsProduction =
-    firebaseConfig.projectId === PRODUCTION_PROJECT_ID;
-  const databaseTargetsProduction =
-    databaseUrlTargetsProduction(firebaseConfig.databaseURL);
-
-  if (projectTargetsProduction !== databaseTargetsProduction) {
+  if (firebaseConfig.projectId === PRODUCTION_PROJECT_ID ||
+      databaseUrlTargetsProduction(firebaseConfig.databaseURL)) {
     throw new Error(
-      'Firebase project ID and database URL are inconsistent; access is blocked.'
+      'Production Firebase is disabled on the revival branch. Use fixture or staging mode.'
     );
   }
 
-  if (projectTargetsProduction || databaseTargetsProduction) {
+  if (!databaseUrlMatchesProject(
+    firebaseConfig.databaseURL,
+    firebaseConfig.projectId
+  )) {
     throw new Error(
-      'Production Firebase is disabled on the revival branch. Use fixture or staging mode.'
+      'Firebase project ID and database URL are inconsistent; access is blocked.'
     );
   }
 };

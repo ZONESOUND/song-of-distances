@@ -13,7 +13,7 @@ export let setupGPS = (callback) => {
         date: Date(Date.now()),
         leave: false
       };
-      if (watchCallBack) watchCallBack(true);
+      if (watchCallBack) watchCallBack(true, {...gpsData});
       return;
     }
     let options = {
@@ -28,13 +28,14 @@ export let gpsHelp = getSettingStr();
 function showPosition(position) {
     //console.log('yo!');
     gpsData = {
+        ...gpsData,
         lat: position.coords.latitude,
         lon: position.coords.longitude,
         timeStamp: Date.now(),
         date: Date(Date.now()),
         leave: false
     }
-    if (watchCallBack) watchCallBack(true);
+    if (watchCallBack) watchCallBack(true, {...gpsData});
 }
     
 function watchPositionError(positionError)  {
@@ -54,7 +55,7 @@ function watchPositionError(positionError)  {
         default:
           break;
     }
-    if (watchCallBack) watchCallBack(false);
+    if (watchCallBack) watchCallBack(false, null);
 }
 
 function getSettingStr() {
@@ -73,4 +74,6 @@ export let clearWatchGPS = () => {
   if (id !== undefined && navigator.geolocation) {
     navigator.geolocation.clearWatch(id);
   }
+  id = undefined;
+  watchCallBack = null;
 }

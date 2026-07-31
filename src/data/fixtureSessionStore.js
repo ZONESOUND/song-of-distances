@@ -34,14 +34,66 @@ const createFixtureSessions = ({center, count, now = Date.now()}) => {
   return sessions;
 };
 
-export const createFixtureSessionStore = ({center, count}) => {
+export const createFixtureSessionStore = ({
+  center,
+  count,
+  motionEnabled = false,
+  motionIntervalMs = 1500,
+}) => {
   let sessions = createFixtureSessions({center, count});
   let nextId = count + 1;
   const listeners = new Set();
+  let motionTimer = null;
+  let motionStep = 0;
+
+  if (motionEnabled && sessions['fixture-0001']) {
+    sessions['fixture-0001'] = {
+      ...sessions['fixture-0001'],
+      lat: center.lat,
+      lon: center.lon,
+      timeStamp: Date.now(),
+      date: new Date().toString(),
+      leave: false,
+    };
+    delete sessions['fixture-0001'].endedAt;
+  }
 
   const publish = () => {
     const snapshot = clone(sessions);
     listeners.forEach((listener) => listener(snapshot));
+  };
+
+  const startMotion = () => {
+    if (!motionEnabled || motionTimer || !sessions['fixture-0001']) return;
+    motionTimer = setInterval(() => {
+      motionStep += 1;
+      const moving = sessions['fixture-0001'];
+      if (!moving) return;
+      const layer = Math.min(motionStep, 9);
+      const hasFinishedMoving = motionStep > 9;
+      const position = coordinateForLayer(
+        center,
+        layer,
+        Math.PI / 5,
+        GLOBAL_SCALE,
+        GLOBAL_POW
+      );
+      sessions['fixture-0001'] = {
+        ...moving,
+        ...(!hasFinishedMoving ? {
+          ...position,
+          timeStamp: Date.now(),
+          date: new Date().toString(),
+        } : {}),
+        leave: hasFinishedMoving,
+        ...(hasFinishedMoving ? {endedAt: Date.now()} : {}),
+      };
+      publish();
+      if (hasFinishedMoving) {
+        clearInterval(motionTimer);
+        motionTimer = null;
+      }
+    }, motionIntervalMs);
   };
 
   return {
@@ -49,6 +101,7 @@ export const createFixtureSessionStore = ({center, count}) => {
     subscribeSessions(listener) {
       listeners.add(listener);
       listener(clone(sessions));
+      startMotion();
       return () => listeners.delete(listener);
     },
     reserveSessionId() {
@@ -72,6 +125,19 @@ export const createFixtureSessionStore = ({center, count}) => {
       publish();
       return Promise.resolve();
     },
+    updatePosition(id, position) {
+      if (sessions[id] && sessions[id].leave === false) {
+        sessions[id] = {
+          ...sessions[id],
+          lat: position.lat,
+          lon: position.lon,
+          timeStamp: position.timeStamp,
+          date: position.date,
+        };
+        publish();
+      }
+      return Promise.resolve();
+    },
     endSession(id) {
       if (sessions[id]) {
         sessions[id].leave = true;
@@ -81,6 +147,8 @@ export const createFixtureSessionStore = ({center, count}) => {
       return Promise.resolve();
     },
     dispose() {
+      if (motionTimer) clearInterval(motionTimer);
+      motionTimer = null;
       listeners.clear();
     },
   };

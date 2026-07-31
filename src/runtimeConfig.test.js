@@ -26,14 +26,51 @@ it('cannot bypass the production guard with an inconsistent project id', () => {
       projectId: 'fake-staging-project',
       databaseURL: 'https://song-of-distance-47ab8.firebaseio.com',
     },
-  })).toThrow('inconsistent');
+  })).toThrow('Production Firebase is disabled');
 
   expect(() => assertFirebaseAccessIsSafe({
     firebase: {
       projectId: 'song-of-distance-47ab8',
       databaseURL: 'https://fake-staging-project.firebaseio.com',
     },
-  })).toThrow('inconsistent');
+  })).toThrow('Production Firebase is disabled');
+
+  expect(() => assertFirebaseAccessIsSafe({
+    firebase: {
+      projectId: 'fake-staging-project',
+      databaseURL: 'https://song-of-distance-47ab8-default-rtdb.firebaseio.com',
+    },
+  })).toThrow('Production Firebase is disabled');
+
+  expect(() => assertFirebaseAccessIsSafe({
+    firebase: {
+      projectId: 'fake-staging-project',
+      databaseURL: 'https://song-of-distance-47ab8.firebaseio.com.',
+    },
+  })).toThrow('Production Firebase is disabled');
+
+  expect(() => assertFirebaseAccessIsSafe({
+    firebase: {
+      projectId: 'song-of-distance',
+      databaseURL: 'https://song-of-distance-47ab8-default-rtdb.asia-southeast1.firebasedatabase.app',
+    },
+  })).toThrow('Production Firebase is disabled');
+
+  expect(() => assertFirebaseAccessIsSafe({
+    firebase: {
+      projectId: 'song-of-distance-47ab8-default-rtdb',
+      databaseURL: 'https://song-of-distance-47ab8-default-rtdb.firebaseio.com',
+    },
+  })).toThrow('Production Firebase is disabled');
+});
+
+it('allows only a staging project with its matching Firebase hostname', () => {
+  expect(() => assertFirebaseAccessIsSafe({
+    firebase: {
+      projectId: 'song-of-distance-staging',
+      databaseURL: 'https://song-of-distance-staging-default-rtdb.firebaseio.com',
+    },
+  })).not.toThrow();
 });
 
 it('only permits loopback Socket.IO in fixture mode', () => {

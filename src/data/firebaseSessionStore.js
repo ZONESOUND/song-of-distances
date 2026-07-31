@@ -71,7 +71,31 @@ export const createFirebaseSessionStore = (runtimeConfig, firebaseOverride) => {
       return result;
     },
     renameSession(id, showId) {
-      return sessionsRef.child(id).update({showId});
+      return enqueuePresence(async () => {
+        if (activeSession && activeSession.id === id) {
+          activeSession = {
+            ...activeSession,
+            payload: {...activeSession.payload, showId},
+          };
+        }
+        await sessionsRef.child(id).update({showId});
+      });
+    },
+    updatePosition(id, position) {
+      return enqueuePresence(async () => {
+        if (!activeSession || activeSession.id !== id) return;
+        const patch = {
+          lat: position.lat,
+          lon: position.lon,
+          timeStamp: position.timeStamp,
+          date: position.date,
+        };
+        activeSession = {
+          ...activeSession,
+          payload: {...activeSession.payload, ...patch},
+        };
+        await sessionsRef.child(id).update(patch);
+      });
     },
     endSession(id) {
       return enqueuePresence(async () => {

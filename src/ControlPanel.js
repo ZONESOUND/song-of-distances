@@ -13,15 +13,30 @@ const SESSION_TIME = 'generative_geo_id_time';
 const defaultSessionStore = createSessionStore();
 
 class LocData extends Component {
+    latestPosition = null;
+
     state = {
         gp: {},
         gpsPermission: null,
         key: null,
+        currentPosition: null,
         //allLocations: [],
         dataPoint: []
     }
-    gpsPermit = (b) => {
-        this.setState({gpsPermission: b});
+    gpsPermit = (b, position) => {
+        if (position) this.latestPosition = position;
+        this.setState({
+            gpsPermission: b,
+            ...(position ? {currentPosition: position} : {}),
+        });
+        if (b && position && this.state.key) {
+            this.props.sessionStore.updatePosition(
+                this.state.key,
+                position
+            ).catch((error) => {
+                console.error('Unable to update location session', error);
+            });
+        }
     }
 
     componentDidMount() {
@@ -36,6 +51,7 @@ class LocData extends Component {
     componentWillUnmount() {
         if (this.unsubscribeSessions) this.unsubscribeSessions();
         clearWatchGPS();
+        if (this.props.sessionStore.dispose) this.props.sessionStore.dispose();
     }
 
     initGPS = () => {
@@ -63,7 +79,16 @@ class LocData extends Component {
     }
 
     startListen = (key) => {
-        this.setState({key: key});
+        this.setState({key: key}, () => {
+            if (this.latestPosition) {
+                this.props.sessionStore.updatePosition(
+                    key,
+                    this.latestPosition
+                ).catch((error) => {
+                    console.error('Unable to update initial location session', error);
+                });
+            }
+        });
     }
      
 
@@ -73,7 +98,10 @@ class LocData extends Component {
             <LocHintModal show={gpsPermission===false}/>
             <IntroModal show={false}/>
             {gpsPermission && <ControlPanel dataPoint={this.state.dataPoint}
-                done={this.startListen} sessionStore={this.props.sessionStore}/>}
+                currentPosition={this.state.currentPosition}
+                done={this.startListen}
+                sessionStore={this.props.sessionStore}/>
+            }
             </>
         );
     }
@@ -121,6 +149,21 @@ class ControlPanel extends Component {
         // GUI.add(btn, 'add config');
 
         // GUI.close()
+    }
+
+    componentDidUpdate(previousProps) {
+        const previous = previousProps.currentPosition;
+        const current = this.props.currentPosition;
+        if (current && (!previous ||
+            current.lat !== previous.lat || current.lon !== previous.lon)) {
+            this.setState({
+                data: {
+                    ...this.state.data,
+                    lat: current.lat,
+                    lon: current.lon,
+                },
+            });
+        }
     }
 
     componentWillUnmount() {
@@ -195,7 +238,7 @@ class ControlPanel extends Component {
             <NameModal show={this.state.naming} name={this.state.name} 
                         onChange={this.changeCenterName}/>
             <P5Wrapper sketch={sketch} dataPoint={dataPoint}
-                    configData={data} myId={gpsData.key}/>
+                    configData={data} myId={this.state.key}/>
             </>
         )
 

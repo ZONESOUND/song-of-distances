@@ -15,7 +15,10 @@ npm start
 
 Open <http://localhost:3000>. With no `.env.local`, the application uses fixed
 GPS, deterministic current/history fixtures, no Firebase connection, and no
-Socket.IO connection.
+Socket.IO connection. One fixture visitor moves outward across the nine legacy
+distance layers and then remains at its final coordinate as a historical node.
+This rehearses the original work's leave-the-venue topology without touching
+real location data.
 
 Run the checks with:
 
@@ -49,4 +52,6 @@ and project IDs are completely blocked until authentication, database rules, and
 staging validation are complete.
 
 Ending a session marks it as historical with `leave: true` and `endedAt`; session
-nodes are never deleted by the web application.
+nodes are never deleted by the web application. While a visitor keeps the page
+open, every browser GPS fix updates that same session node. The latest coordinate
+is therefore retained when the session becomes historical.

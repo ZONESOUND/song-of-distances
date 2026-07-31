@@ -8,6 +8,11 @@ Firebase or Socket.IO unless those services are explicitly enabled.
 Copy `.env.example` to `.env.local` if overrides are needed. The checked-in
 defaults provide fixed GPS and deterministic current/history sessions.
 
+By default, `fixture-0001` moves from the center through all nine distance
+layers, then becomes historical at its final coordinate. The interval can be
+changed with `REACT_APP_FIXTURE_MOTION_INTERVAL`, or disabled with
+`REACT_APP_FIXTURE_MOTION=false`.
+
 To feed a local Node for Max relay, configure:
 
 ```text
@@ -42,3 +47,6 @@ project. Production access remains disabled until authentication, database rules
 and staging validation are complete.
 
 Ending a session updates `leave: true` and `endedAt`; it never removes the node.
+Browser GPS updates overwrite the coordinates of the same active session rather
+than creating a new node for every sample. Closing or disconnecting preserves
+the last known coordinates as the historical node.
