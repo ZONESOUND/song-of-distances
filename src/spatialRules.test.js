@@ -56,23 +56,17 @@ it('maps twenty kilometres to the outer display radius', () => {
 
 it('expands nearby movement while keeping it inside the twenty kilomet edge', () => {
   const coordinate = coordinateForDistanceKm(CENTER, 1, 0);
-  const distancePow = 0.74;
-  const ringCount = 50;
   const projection = projectGpsPointToRange(
     coordinate,
     CENTER,
     20,
     480,
-    distancePow
+    GLOBAL_POW
   );
-  const projectedRadius = Math.sqrt(
-    projection.x * projection.x + projection.y * projection.y
-  );
-  const ringPosition = projectedRadius / (480 / (ringCount - 1));
 
   expect(projection.distanceKm).toBeCloseTo(1, 2);
-  expect(ringPosition).toBeGreaterThan(5);
-  expect(ringPosition).toBeLessThan(6);
+  expect(projection.x).toBeGreaterThan(80);
+  expect(projection.x).toBeLessThan(100);
   expect(projection.y).toBeCloseTo(0, 5);
 });
 

@@ -119,7 +119,7 @@ class ControlPanel extends Component {
     state = {
         data: {
             globalScale: 250000,
-            globalPow: 0.74,
+            globalPow: 0.58,
             maxRangeKm: runtimeConfig.maxRangeKm,
             maxLineLength: 100,
             radioSpeed: 0.5/2*Math.PI,
