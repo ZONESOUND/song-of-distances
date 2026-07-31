@@ -9,10 +9,9 @@ import {
     TRIGGER_ADDRESS,
 } from './oscProtocol';
 import {
-    calcLayerFromDistance,
     calcRadarAngle,
-    calcRingDiameter,
     didRadarCross,
+    projectGpsPointToRange,
 } from './spatialRules';
 
 export default function sketch (p) {
@@ -48,6 +47,7 @@ export default function sketch (p) {
 
     p.windowResized = () =>  {
         p.resizeCanvas(p.windowWidth, p.windowHeight);
+        calcRdistArr();
     }
 
     p.myCustomRedrawAccordingToNewPropsHandler = (props) => {
@@ -69,24 +69,32 @@ export default function sketch (p) {
     };
 
     let dataPointMap = (e) => {
-        let pos = getPos(p, configData, e);
+        let projection = getProjection(p, configData, e);
+        let pos = p.createVector(projection.x, projection.y);
         let dist = pos.mag().toFixed(5)*1.0;
         let deg = (pos.heading()/Math.PI*180).toFixed(5)*1.0;
-        return {...e, pos: pos, dist: dist, degree: deg}
+        return {
+            ...e,
+            pos: pos,
+            dist: dist,
+            distanceKm: projection.distanceKm,
+            degree: deg
+        }
     }
 
     let updateDataPoint = () => {
         let num = p.int(p.frameCount / 4);
         if (num) {
-            let threshold = calcR(10, configData.globalScale, configData.globalPow);
-            dataPoint = allDataPoint.slice(-num).map(dataPointMap).filter((e) => e.dist < threshold);
+            dataPoint = allDataPoint.slice(-num).map(dataPointMap)
+                .filter((e) => e.distanceKm <= configData.maxRangeKm);
         }
         enableUpdate = num > allDataPoint.length ? false : true;
     }
 
     let calcRdistArr = () => {
+        const outerRadius = getOuterRadius(p);
         for (let i=0; i<50; i++) {
-            rDistArr[i] = calcR(i, configData.globalScale, configData.globalPow);
+            rDistArr[i] = outerRadius * 2 * i / 49;
         }
     }
 
@@ -227,7 +235,7 @@ function drawDataPoint(p, dataPoint, radioDeg, lastRadioDeg, configData) {
                 let d = {  
                     //layer: Math.ceil(Math.pow(e.dist/0.5, 1/configData.globalPow)*10/configData.globalScale),
                     //layer: Math.ceil(Math.pow(e.dist/0.5, 1/configData.globalPow)*10/configData.globalScale),
-                    layer: calcReverseR(e.dist, configData.globalScale, configData.globalPow),
+                    layer: e.distanceKm,
                     degree: e.degree,
                     dist: e.dist,
                     leave: e.leave,
@@ -297,15 +305,6 @@ function drawDataPoint(p, dataPoint, radioDeg, lastRadioDeg, configData) {
       })
 }
 
-function calcR(i, globalScale, globalPow) {
-    return calcRingDiameter(i, globalScale, globalPow);
-}
-
-function calcReverseR(dist, globalScale, globalPow) {
-    return calcLayerFromDistance(dist, globalScale, globalPow);
-  //return Math.ceil(Math.pow(dist/0.25, 1/globalPow)*10/globalScale);
-}
-
 function drawCircle(p, rDistArr) {
     let frameCount = p.frameCount;
     p.noFill();
@@ -369,18 +368,18 @@ function calcDeg(radioSpeed, frameCount) {
     return calcRadarAngle(radioSpeed, frameCount);
 }
 
-function getPos(p, configData, obj){
+function getOuterRadius(p) {
+    return Math.max(1, Math.min(p.width, p.height) / 2 - 20);
+}
 
-    if (obj.lon && obj.lat){
-      let lon = (obj.lon-configData.lon)*configData.globalScale
-      let lat = (obj.lat-configData.lat)*configData.globalScale
-      let result= p.createVector(lon,lat)
-      result.x = (result.x>0?1:-1)* Math.pow(Math.abs(result.x),configData.globalPow)
-      result.y =  (result.y>0?1:-1)* Math.pow(Math.abs(result.y),configData.globalPow)
-      result.y*=-1
-      return result
-    } 
-    return null
+function getProjection(p, configData, obj){
+    return projectGpsPointToRange(
+        obj,
+        {lat: configData.lat, lon: configData.lon},
+        configData.maxRangeKm,
+        getOuterRadius(p),
+        configData.globalPow
+    );
 }
 
 function calcPerson(dataPoint) {

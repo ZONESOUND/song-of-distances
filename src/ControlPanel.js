@@ -7,6 +7,7 @@ import {NameModal} from './NameModal';
 import {IntroModal} from './IntroModal';
 import { LocHintModal } from './LocHintModal';
 import {withEffectivePresence} from './sessionPresence';
+import {runtimeConfig} from './runtimeConfig';
 
 const SESSION_ID = 'generative_geo_id';
 const SESSION_NAME = 'generative_name';
@@ -119,6 +120,7 @@ class ControlPanel extends Component {
         data: {
             globalScale: 250000,
             globalPow: 0.58,
+            maxRangeKm: runtimeConfig.maxRangeKm,
             maxLineLength: 100,
             radioSpeed: 0.5/2*Math.PI,
             lat: gpsData.lat,
