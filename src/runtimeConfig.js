@@ -39,7 +39,7 @@ export const runtimeConfig = {
     20
   )),
   fixtureCount: Math.max(0, Math.floor(
-    readNumber(process.env.REACT_APP_FIXTURE_COUNT, 180)
+    readNumber(process.env.REACT_APP_FIXTURE_COUNT, 30)
   )),
   fixtureMotionEnabled: readBoolean(
     process.env.REACT_APP_FIXTURE_MOTION,
