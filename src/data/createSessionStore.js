@@ -9,6 +9,7 @@ export const createSessionStore = (config = runtimeConfig) => {
   return createFixtureSessionStore({
     center: config.fixedLocation,
     count: config.fixtureCount,
+    activeCount: config.fixtureActiveCount,
     motionEnabled: config.fixtureMotionEnabled,
     motionIntervalMs: config.fixtureMotionIntervalMs,
   });

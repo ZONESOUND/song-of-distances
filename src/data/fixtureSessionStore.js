@@ -5,8 +5,35 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 const GLOBAL_SCALE = 250000;
 const GLOBAL_POW = 0.58;
 
-const createFixtureSessions = ({center, count, now = Date.now()}) => {
+const radicalInverse = (value, base) => {
+  let result = 0;
+  let fraction = 1 / base;
+  let current = value;
+  while (current > 0) {
+    result += fraction * (current % base);
+    current = Math.floor(current / base);
+    fraction /= base;
+  }
+  return result;
+};
+
+export const fixtureViewportPosition = (index) => ({
+  x: (radicalInverse(index + 1, 2) * 2 - 1) * 0.94,
+  y: (radicalInverse(index + 1, 3) * 2 - 1) * 0.90,
+});
+
+const createFixtureSessions = ({
+  center,
+  count,
+  activeCount,
+  now = Date.now(),
+}) => {
   const sessions = {};
+  const resolvedActiveCount = Math.min(count, Math.max(0, activeCount));
+  const activeIndices = new Set();
+  for (let activeIndex = 0; activeIndex < resolvedActiveCount; activeIndex += 1) {
+    activeIndices.add(count - resolvedActiveCount + activeIndex);
+  }
   for (let index = 0; index < count; index += 1) {
     const angle = (index * 137.508) * Math.PI / 180;
     const ring = 1 + (index % 9);
@@ -18,7 +45,7 @@ const createFixtureSessions = ({center, count, now = Date.now()}) => {
       GLOBAL_POW
     );
     const id = `fixture-${String(index + 1).padStart(4, '0')}`;
-    const isHistory = index % 4 !== 0;
+    const isHistory = !activeIndices.has(index);
     sessions[id] = {
       key: id,
       showId: `F${String(index + 1).padStart(3, '0')}`,
@@ -29,7 +56,10 @@ const createFixtureSessions = ({center, count, now = Date.now()}) => {
       leave: isHistory,
       ...(!isHistory ? {lastSeen: now} : {}),
       ...(isHistory ? {endedAt: now - index * 30000} : {}),
-      data: {fixture: true},
+      data: {
+        fixture: true,
+        fixtureViewport: fixtureViewportPosition(index),
+      },
     };
   }
   return sessions;
@@ -38,10 +68,16 @@ const createFixtureSessions = ({center, count, now = Date.now()}) => {
 export const createFixtureSessionStore = ({
   center,
   count,
+  activeCount = 10,
   motionEnabled = false,
   motionIntervalMs = 1500,
 }) => {
-  let sessions = createFixtureSessions({center, count});
+  const movingSessionCount = motionEnabled && count > 0 ? 1 : 0;
+  let sessions = createFixtureSessions({
+    center,
+    count,
+    activeCount: Math.max(0, activeCount - movingSessionCount),
+  });
   let nextId = count + 1;
   const listeners = new Set();
   let motionTimer = null;
@@ -56,6 +92,11 @@ export const createFixtureSessionStore = ({
       date: new Date().toString(),
       leave: false,
       lastSeen: Date.now(),
+      data: {
+        ...sessions['fixture-0001'].data,
+        fixtureViewport: null,
+        fixtureMoving: true,
+      },
     };
     delete sessions['fixture-0001'].endedAt;
   }

@@ -1,10 +1,14 @@
-import {createFixtureSessionStore} from './fixtureSessionStore';
+import {
+  createFixtureSessionStore,
+  fixtureViewportPosition,
+} from './fixtureSessionStore';
 import {calcLayerFromDistance, projectGpsPoint} from '../spatialRules';
 
 it('contains both current and historical sessions without network access', () => {
   const store = createFixtureSessionStore({
     center: {lat: 25.033, lon: 121.5654},
     count: 8,
+    activeCount: 2,
   });
   let sessions;
   store.subscribeSessions((value) => { sessions = value; });
@@ -19,6 +23,45 @@ it('contains both current and historical sessions without network access', () =>
     return Math.round(calcLayerFromDistance(point.distance, 250000, 0.58));
   });
   expect(new Set(layers)).toEqual(new Set([1, 2, 3, 4, 5, 6, 7, 8]));
+});
+
+it('spreads fixture nodes across the viewport with ten or fewer active nodes', () => {
+  const store = createFixtureSessionStore({
+    center: {lat: 25.033, lon: 121.5654},
+    count: 180,
+    activeCount: 10,
+  });
+  let sessions;
+  store.subscribeSessions((value) => { sessions = value; });
+  const values = Object.values(sessions);
+  const viewport = values.map((session) => session.data.fixtureViewport);
+  const activeViewport = values
+    .filter((session) => session.leave === false)
+    .map((session) => session.data.fixtureViewport);
+
+  expect(values.filter((session) => session.leave === false)).toHaveLength(10);
+  expect(Math.min(...viewport.map((position) => position.x))).toBeLessThan(-0.8);
+  expect(Math.max(...viewport.map((position) => position.x))).toBeGreaterThan(0.8);
+  expect(Math.min(...viewport.map((position) => position.y))).toBeLessThan(-0.8);
+  expect(Math.max(...viewport.map((position) => position.y))).toBeGreaterThan(0.8);
+  expect(new Set(viewport.map((position) =>
+    `${position.x},${position.y}`
+  )).size).toBe(180);
+  expect(Math.min(...activeViewport.map((position) => position.x)))
+    .toBeLessThan(-0.8);
+  expect(Math.max(...activeViewport.map((position) => position.x)))
+    .toBeGreaterThan(0.8);
+  expect(Math.min(...activeViewport.map((position) => position.y)))
+    .toBeLessThan(-0.7);
+  expect(Math.max(...activeViewport.map((position) => position.y)))
+    .toBeGreaterThan(0.7);
+});
+
+it('uses a deterministic low-discrepancy fixture layout', () => {
+  expect(fixtureViewportPosition(0).x).toBeCloseTo(0, 8);
+  expect(fixtureViewportPosition(0).y).toBeCloseTo(-0.3, 8);
+  expect(fixtureViewportPosition(1).x).toBeCloseTo(-0.47, 8);
+  expect(fixtureViewportPosition(1).y).toBeCloseTo(0.3, 8);
 });
 
 it('marks a session historical without deleting it', async () => {

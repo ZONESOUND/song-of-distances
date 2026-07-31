@@ -79,7 +79,9 @@ export default function sketch (p) {
         let num = p.int(p.frameCount / 4);
         if (num) {
             let threshold = calcR(10, configData.globalScale, configData.globalPow);
-            dataPoint = allDataPoint.slice(-num).map(dataPointMap).filter((e) => e.dist < threshold);
+            dataPoint = allDataPoint.slice(-num).map(dataPointMap).filter((e) =>
+                (e.data && e.data.fixtureViewport) || e.dist < threshold
+            );
         }
         enableUpdate = num > allDataPoint.length ? false : true;
     }
@@ -370,6 +372,16 @@ function calcDeg(radioSpeed, frameCount) {
 }
 
 function getPos(p, configData, obj){
+
+    const fixtureViewport = obj.data && obj.data.fixtureViewport;
+    if (fixtureViewport &&
+        Number.isFinite(Number(fixtureViewport.x)) &&
+        Number.isFinite(Number(fixtureViewport.y))){
+      return p.createVector(
+        Number(fixtureViewport.x) * p.width / 2,
+        Number(fixtureViewport.y) * p.height / 2
+      )
+    }
 
     if (obj.lon && obj.lat){
       let lon = (obj.lon-configData.lon)*configData.globalScale
