@@ -34,10 +34,6 @@ export const runtimeConfig = {
     lat: readNumber(process.env.REACT_APP_FIXED_LAT, 25.033),
     lon: readNumber(process.env.REACT_APP_FIXED_LON, 121.5654),
   },
-  maxRangeKm: Math.max(0.1, readNumber(
-    process.env.REACT_APP_MAX_RANGE_KM,
-    20
-  )),
   fixtureCount: Math.max(0, Math.floor(
     readNumber(process.env.REACT_APP_FIXTURE_COUNT, 180)
   )),

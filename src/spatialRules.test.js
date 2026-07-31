@@ -2,11 +2,8 @@ import {
   calcLayerFromDistance,
   calcRadarAngle,
   coordinateForLayer,
-  coordinateForDistanceKm,
   didRadarCross,
-  localOffsetKm,
   projectGpsPoint,
-  projectGpsPointToRange,
 } from './spatialRules';
 
 const CENTER = {lat: 25.033, lon: 121.5654};
@@ -36,38 +33,6 @@ it('places deterministic fixture coordinates on all nine legacy layers', () => {
     );
     expect(resolvedLayer).toBeCloseTo(layer, 8);
   }
-});
-
-it('maps twenty kilometres to the outer display radius', () => {
-  const coordinate = coordinateForDistanceKm(CENTER, 20, Math.PI / 3);
-  const projection = projectGpsPointToRange(
-    coordinate,
-    CENTER,
-    20,
-    480,
-    GLOBAL_POW
-  );
-
-  expect(localOffsetKm(coordinate, CENTER).distanceKm).toBeCloseTo(20, 1);
-  expect(Math.sqrt(
-    projection.x * projection.x + projection.y * projection.y
-  )).toBeCloseTo(480, 1);
-});
-
-it('expands nearby movement while keeping it inside the twenty kilomet edge', () => {
-  const coordinate = coordinateForDistanceKm(CENTER, 1, 0);
-  const projection = projectGpsPointToRange(
-    coordinate,
-    CENTER,
-    20,
-    480,
-    GLOBAL_POW
-  );
-
-  expect(projection.distanceKm).toBeCloseTo(1, 2);
-  expect(projection.x).toBeGreaterThan(80);
-  expect(projection.x).toBeLessThan(100);
-  expect(projection.y).toBeCloseTo(0, 5);
 });
 
 it('preserves radar frame angles and ignores the wraparound jump', () => {

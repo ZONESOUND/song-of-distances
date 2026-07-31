@@ -1,27 +1,24 @@
 import {createFixtureSessionStore} from './fixtureSessionStore';
-import {localOffsetKm} from '../spatialRules';
+import {calcLayerFromDistance, projectGpsPoint} from '../spatialRules';
 
-it('fills the twenty kilomet field with history without fake active sessions', () => {
-  const center = {lat: 25.033, lon: 121.5654};
+it('contains both current and historical sessions without network access', () => {
   const store = createFixtureSessionStore({
-    center,
-    count: 20,
-    maxRangeKm: 20,
+    center: {lat: 25.033, lon: 121.5654},
+    count: 8,
   });
   let sessions;
   store.subscribeSessions((value) => { sessions = value; });
 
-  expect(Object.keys(sessions)).toHaveLength(20);
-  expect(Object.values(sessions).every((session) => session.leave === true))
-    .toBe(true);
+  expect(Object.keys(sessions)).toHaveLength(8);
+  expect(Object.values(sessions).some((session) => session.leave === false)).toBe(true);
+  expect(Object.values(sessions).some((session) => session.leave === true)).toBe(true);
 
-  const distances = Object.values(sessions).map((session) =>
-    Math.round(localOffsetKm(session, center).distanceKm)
-  );
-  expect(new Set(distances)).toEqual(new Set([
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-    11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-  ]));
+  const center = {lat: 25.033, lon: 121.5654};
+  const layers = Object.values(sessions).map((session) => {
+    const point = projectGpsPoint(session, center, 250000, 0.58);
+    return Math.round(calcLayerFromDistance(point.distance, 250000, 0.58));
+  });
+  expect(new Set(layers)).toEqual(new Set([1, 2, 3, 4, 5, 6, 7, 8]));
 });
 
 it('marks a session historical without deleting it', async () => {
@@ -98,7 +95,7 @@ it('can simulate one visitor moving outward and leaving their final node', () =>
   store.subscribeSessions((value) => { sessions = value; });
   const initial = {...sessions['fixture-0001']};
 
-  jest.advanceTimersByTime(10000);
+  jest.advanceTimersByTime(9000);
 
   expect(sessions['fixture-0001']).toMatchObject({leave: false});
 

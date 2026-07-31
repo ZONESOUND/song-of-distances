@@ -1,20 +1,24 @@
-import {coordinateForDistanceKm} from '../spatialRules';
+import {coordinateForLayer} from '../spatialRules';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
-const createFixtureSessions = ({
-  center,
-  count,
-  maxRangeKm,
-  now = Date.now(),
-}) => {
+const GLOBAL_SCALE = 250000;
+const GLOBAL_POW = 0.58;
+
+const createFixtureSessions = ({center, count, now = Date.now()}) => {
   const sessions = {};
-  const distanceSteps = Math.max(1, Math.round(maxRangeKm));
   for (let index = 0; index < count; index += 1) {
     const angle = (index * 137.508) * Math.PI / 180;
-    const distanceKm = Math.min(maxRangeKm, 1 + (index % distanceSteps));
-    const position = coordinateForDistanceKm(center, distanceKm, angle);
+    const ring = 1 + (index % 9);
+    const position = coordinateForLayer(
+      center,
+      ring,
+      angle,
+      GLOBAL_SCALE,
+      GLOBAL_POW
+    );
     const id = `fixture-${String(index + 1).padStart(4, '0')}`;
+    const isHistory = index % 4 !== 0;
     sessions[id] = {
       key: id,
       showId: `F${String(index + 1).padStart(3, '0')}`,
@@ -22,9 +26,10 @@ const createFixtureSessions = ({
       lon: position.lon,
       timeStamp: now - index * 45000,
       date: new Date(now - index * 45000).toString(),
-      leave: true,
-      endedAt: now - index * 30000,
-      data: {fixture: true, distanceKm},
+      leave: isHistory,
+      ...(!isHistory ? {lastSeen: now} : {}),
+      ...(isHistory ? {endedAt: now - index * 30000} : {}),
+      data: {fixture: true},
     };
   }
   return sessions;
@@ -33,11 +38,10 @@ const createFixtureSessions = ({
 export const createFixtureSessionStore = ({
   center,
   count,
-  maxRangeKm = 20,
   motionEnabled = false,
   motionIntervalMs = 1500,
 }) => {
-  let sessions = createFixtureSessions({center, count, maxRangeKm});
+  let sessions = createFixtureSessions({center, count});
   let nextId = count + 1;
   const listeners = new Set();
   let motionTimer = null;
@@ -67,12 +71,14 @@ export const createFixtureSessionStore = ({
       motionStep += 1;
       const moving = sessions['fixture-0001'];
       if (!moving) return;
-      const distanceKm = Math.min(motionStep * 2, maxRangeKm);
-      const hasFinishedMoving = motionStep * 2 > maxRangeKm;
-      const position = coordinateForDistanceKm(
+      const layer = Math.min(motionStep, 9);
+      const hasFinishedMoving = motionStep > 9;
+      const position = coordinateForLayer(
         center,
-        distanceKm,
-        Math.PI / 5
+        layer,
+        Math.PI / 5,
+        GLOBAL_SCALE,
+        GLOBAL_POW
       );
       sessions['fixture-0001'] = {
         ...moving,

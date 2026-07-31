@@ -24,55 +24,6 @@ export const projectGpsPoint = (point, center, globalScale, globalPow) => {
   };
 };
 
-const EARTH_RADIUS_KM = 6371.0088;
-const toRadians = (degrees) => degrees * Math.PI / 180;
-
-export const localOffsetKm = (point, center) => {
-  const centerLat = toRadians(Number(center.lat));
-  const pointLat = toRadians(Number(point.lat));
-  const deltaLat = pointLat - centerLat;
-  const deltaLon = toRadians(Number(point.lon) - Number(center.lon));
-  const meanLat = (centerLat + pointLat) / 2;
-  const eastKm = deltaLon * Math.cos(meanLat) * EARTH_RADIUS_KM;
-  const northKm = deltaLat * EARTH_RADIUS_KM;
-  return {
-    eastKm,
-    northKm,
-    distanceKm: Math.sqrt(eastKm * eastKm + northKm * northKm),
-  };
-};
-
-export const projectGpsPointToRange = (
-  point,
-  center,
-  maxRangeKm,
-  outerRadius,
-  distancePow
-) => {
-  const offset = localOffsetKm(point, center);
-  if (offset.distanceKm === 0) {
-    return {...offset, x: 0, y: 0};
-  }
-  const normalizedDistance = offset.distanceKm / maxRangeKm;
-  const projectedDistance =
-    Math.pow(normalizedDistance, distancePow) * outerRadius;
-  return {
-    ...offset,
-    x: offset.eastKm / offset.distanceKm * projectedDistance,
-    y: -offset.northKm / offset.distanceKm * projectedDistance,
-  };
-};
-
-export const coordinateForDistanceKm = (center, distanceKm, angle) => {
-  const northKm = Math.sin(angle) * distanceKm;
-  const eastKm = Math.cos(angle) * distanceKm;
-  const latRadians = toRadians(Number(center.lat));
-  return {
-    lat: Number(center.lat) + northKm / 111.195,
-    lon: Number(center.lon) + eastKm / (111.195 * Math.cos(latRadians)),
-  };
-};
-
 export const coordinateForLayer = (
   center,
   layer,
