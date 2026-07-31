@@ -51,6 +51,18 @@ it('keeps one session id while GPS and the client center move together', () => {
   Object.assign(gpsData, first);
   act(() => gpsCallback(true, first));
 
+  const topologyPanel = document.querySelector('.dg.main');
+  expect(topologyPanel).not.toBeNull();
+  expect(topologyPanel.style.display).toBe('none');
+  act(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', {key: 'h'}));
+  });
+  expect(topologyPanel.style.display).toBe('');
+  act(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', {key: 'H'}));
+  });
+  expect(topologyPanel.style.display).toBe('none');
+
   const second = {
     lat: 25.091,
     lon: 121.602,

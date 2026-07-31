@@ -1,4 +1,5 @@
 import React, {Component} from 'react';
+import * as dat from 'dat.gui';
 import P5Wrapper from 'react-p5-wrapper';
 import sketch from './sketch';
 import {createSessionStore} from './data/createSessionStore';
@@ -11,6 +12,12 @@ import {withEffectivePresence} from './sessionPresence';
 const SESSION_ID = 'generative_geo_id';
 const SESSION_NAME = 'generative_name';
 const SESSION_TIME = 'generative_geo_id_time';
+const CONTROL_DATA = 'controlData';
+const DEFAULT_TOPOLOGY_CONTROLS = {
+    globalScale: 250000,
+    globalPow: 0.58,
+    radioSpeed: 0.5/2*Math.PI,
+};
 const defaultSessionStore = createSessionStore();
 
 class LocData extends Component {
@@ -115,12 +122,14 @@ class LocData extends Component {
 }
 
 class ControlPanel extends Component {
+    GUI = null;
+    controlModel = null;
+    controlPanelVisible = false;
+
     state = {
         data: {
-            globalScale: 250000,
-            globalPow: 0.58,
+            ...DEFAULT_TOPOLOGY_CONTROLS,
             maxLineLength: 100,
-            radioSpeed: 0.5/2*Math.PI,
             lat: gpsData.lat,
             lon: gpsData.lon,
             centerName: 'center'
@@ -132,30 +141,11 @@ class ControlPanel extends Component {
     }
 
     componentDidMount() {
-        
         this.addGPSKey();
         this.setState({naming: true});
         window.addEventListener("beforeunload", this.handleWindowBeforeUnload);
-        //let dataStore = sessionStorage.getItem('controlData');
-        //console.log(dataStore);
-        //let {data, GUI} = this.state;
-        //if (dataStore) {
-        // data = JSON.parse(dataStore);
-        //     this.setState({
-        //         data: data
-        //     })
-        //} 
-        // const btn = {'add config': this.saveControlData};
-        // GUI.add(data,"globalScale",1000,800000)
-        // GUI.add(data,"globalPow",0,0.99)
-        // GUI.add(data,"maxLineLength")
-        // GUI.add(data,'radioSpeed',0,3,0.01)
-        // GUI.add(data,'centerName')
-        // GUI.add(data,'lat',-90,90,0.01)
-        // GUI.add(data,'lon',-180,180,0.01)
-        // GUI.add(btn, 'add config');
-
-        // GUI.close()
+        window.addEventListener("keydown", this.handleControlPanelShortcut);
+        this.setupControlPanel();
     }
 
     componentDidUpdate(previousProps) {
@@ -175,6 +165,8 @@ class ControlPanel extends Component {
 
     componentWillUnmount() {
         window.removeEventListener("beforeunload", this.handleWindowBeforeUnload);
+        window.removeEventListener("keydown", this.handleControlPanelShortcut);
+        if (this.GUI) this.GUI.destroy();
         if (this.state.key) {
             this.props.sessionStore.endSession(this.state.key).catch(() => {});
         }
@@ -226,8 +218,88 @@ class ControlPanel extends Component {
     }
     
     saveControlData = () => {
-        let {data} = this.state;
-        sessionStorage.setItem('controlData', JSON.stringify({...data}));
+        const {globalScale, globalPow, radioSpeed} = this.state.data;
+        sessionStorage.setItem(CONTROL_DATA, JSON.stringify({
+            globalScale,
+            globalPow,
+            radioSpeed,
+        }));
+    }
+
+    loadControlData = () => {
+        try {
+            const saved = JSON.parse(sessionStorage.getItem(CONTROL_DATA));
+            if (!saved) return DEFAULT_TOPOLOGY_CONTROLS;
+            return Object.keys(DEFAULT_TOPOLOGY_CONTROLS).reduce(
+                (controls, key) => ({
+                    ...controls,
+                    [key]: Number.isFinite(Number(saved[key]))
+                        ? Number(saved[key])
+                        : DEFAULT_TOPOLOGY_CONTROLS[key],
+                }),
+                {}
+            );
+        } catch (error) {
+            return DEFAULT_TOPOLOGY_CONTROLS;
+        }
+    }
+
+    updateTopologyControl = (key, value) => {
+        const numberValue = Number(value);
+        if (!Number.isFinite(numberValue)) return;
+        this.setState({
+            data: {...this.state.data, [key]: numberValue},
+        }, this.saveControlData);
+    }
+
+    resetTopologyControls = () => {
+        Object.assign(this.controlModel, DEFAULT_TOPOLOGY_CONTROLS);
+        this.setState({
+            data: {...this.state.data, ...DEFAULT_TOPOLOGY_CONTROLS},
+        }, () => {
+            this.saveControlData();
+            if (this.GUI) this.GUI.updateDisplay();
+        });
+    }
+
+    setupControlPanel = () => {
+        const savedControls = this.loadControlData();
+        this.controlModel = {
+            ...savedControls,
+            reset: this.resetTopologyControls,
+        };
+        this.setState({
+            data: {...this.state.data, ...savedControls},
+        });
+
+        this.GUI = new dat.GUI({
+            name: 'Song of Distance — Topology',
+            width: 320,
+            hideable: false,
+        });
+        this.GUI.add(this.controlModel, 'globalScale', 1000, 800000, 1000)
+            .name('距離比例 globalScale')
+            .onChange((value) => this.updateTopologyControl('globalScale', value));
+        this.GUI.add(this.controlModel, 'globalPow', 0.1, 0.99, 0.01)
+            .name('拓樸曲線 globalPow')
+            .onChange((value) => this.updateTopologyControl('globalPow', value));
+        this.GUI.add(this.controlModel, 'radioSpeed', 0, 3, 0.01)
+            .name('雷達速度 radioSpeed')
+            .onChange((value) => this.updateTopologyControl('radioSpeed', value));
+        this.GUI.add(this.controlModel, 'reset').name('還原原始參數');
+        this.GUI.open();
+        this.GUI.hide();
+    }
+
+    handleControlPanelShortcut = (event) => {
+        const target = event.target;
+        const tagName = target && target.tagName;
+        if (tagName === 'INPUT' || tagName === 'TEXTAREA' ||
+            tagName === 'SELECT' ||
+            String(event.key || '').toLowerCase() !== 'h') return;
+        this.controlPanelVisible = !this.controlPanelVisible;
+        if (this.controlPanelVisible) this.GUI.show();
+        else this.GUI.hide();
     }
 
     handleWindowBeforeUnload = (e) => {
