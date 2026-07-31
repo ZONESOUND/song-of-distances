@@ -27,6 +27,7 @@ const createFixtureSessions = ({center, count, now = Date.now()}) => {
       timeStamp: now - index * 45000,
       date: new Date(now - index * 45000).toString(),
       leave: isHistory,
+      ...(!isHistory ? {lastSeen: now} : {}),
       ...(isHistory ? {endedAt: now - index * 30000} : {}),
       data: {fixture: true},
     };
@@ -54,6 +55,7 @@ export const createFixtureSessionStore = ({
       timeStamp: Date.now(),
       date: new Date().toString(),
       leave: false,
+      lastSeen: Date.now(),
     };
     delete sessions['fixture-0001'].endedAt;
   }
@@ -84,6 +86,7 @@ export const createFixtureSessionStore = ({
           ...position,
           timeStamp: Date.now(),
           date: new Date().toString(),
+          lastSeen: Date.now(),
         } : {}),
         leave: hasFinishedMoving,
         ...(hasFinishedMoving ? {endedAt: Date.now()} : {}),
@@ -115,6 +118,7 @@ export const createFixtureSessionStore = ({
         ...clone(payload),
         key: id,
         leave: false,
+        lastSeen: Date.now(),
       };
       delete sessions[id].endedAt;
       publish();
@@ -133,6 +137,7 @@ export const createFixtureSessionStore = ({
           lon: position.lon,
           timeStamp: position.timeStamp,
           date: position.date,
+          lastSeen: Date.now(),
         };
         publish();
       }

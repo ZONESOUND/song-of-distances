@@ -55,3 +55,9 @@ Ending a session marks it as historical with `leave: true` and `endedAt`; sessio
 nodes are never deleted by the web application. While a visitor keeps the page
 open, every browser GPS fix updates that same session node. The latest coordinate
 is therefore retained when the session becomes historical.
+
+Online status is presence-based rather than trusting `leave: false` forever.
+Firebase sessions publish a server-timed heartbeat every 15 seconds; a node is
+shown as active only when it is explicitly active and was seen within the last
+60 seconds. Stale legacy sessions are rendered as history without rewriting or
+deleting their stored coordinates.

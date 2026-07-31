@@ -6,6 +6,7 @@ import {gpsData, setupGPS, clearWatchGPS} from './gps';
 import {NameModal} from './NameModal';
 import {IntroModal} from './IntroModal';
 import { LocHintModal } from './LocHintModal';
+import {withEffectivePresence} from './sessionPresence';
 
 const SESSION_ID = 'generative_geo_id';
 const SESSION_NAME = 'generative_name';
@@ -14,6 +15,7 @@ const defaultSessionStore = createSessionStore();
 
 class LocData extends Component {
     latestPosition = null;
+    latestLocations = {};
 
     state = {
         gp: {},
@@ -46,10 +48,14 @@ class LocData extends Component {
         this.unsubscribeSessions = this.props.sessionStore.subscribeSessions(
             this.updateDataSet
         );
+        this.presenceTimer = setInterval(() => {
+            this.updateDataSet(this.latestLocations);
+        }, 5000);
     }
 
     componentWillUnmount() {
         if (this.unsubscribeSessions) this.unsubscribeSessions();
+        if (this.presenceTimer) clearInterval(this.presenceTimer);
         clearWatchGPS();
         if (this.props.sessionStore.dispose) this.props.sessionStore.dispose();
     }
@@ -59,8 +65,9 @@ class LocData extends Component {
     }
 
     updateDataSet = (allLocations) => {
+        this.latestLocations = allLocations || {};
         this.setState({
-            dataPoint: Object.entries(allLocations || {})
+            dataPoint: Object.entries(this.latestLocations)
             .filter(([id, value]) =>
                 id !== this.state.key &&
                 id !== gpsData.key &&
@@ -70,7 +77,7 @@ class LocData extends Component {
                 Number.isFinite(Number(value.timeStamp))
             )
             .map(([id, value]) => ({
-                ...value,
+                ...withEffectivePresence(value),
                 key: id,
                 showId: value.showId || getShowId(id),
             }))

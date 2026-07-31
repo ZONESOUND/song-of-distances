@@ -40,10 +40,11 @@ it('keeps one session id while GPS and the client center move together', () => {
     ReactDOM.render(<LocData sessionStore={store}/>, container);
   });
   const gpsCallback = setupGPS.mock.calls[0][0];
+  const now = Date.now();
   const first = {
     lat: 25.033,
     lon: 121.5654,
-    timeStamp: 1700000000000,
+    timeStamp: now,
     date: 'start',
     leave: false,
   };
@@ -53,13 +54,19 @@ it('keeps one session id while GPS and the client center move together', () => {
   const second = {
     lat: 25.091,
     lon: 121.602,
-    timeStamp: 1700000005000,
+    timeStamp: now + 5000,
     date: 'moved',
     leave: false,
   };
   act(() => gpsCallback(true, second));
   act(() => onSessions({
     'session-a': {...second, key: 'session-a'},
+    'stale-session': {
+      lat: 25.04,
+      lon: 121.57,
+      timeStamp: now - 60001,
+      leave: false,
+    },
   }));
 
   expect(store.reserveSessionId).toHaveBeenCalledTimes(1);
@@ -72,7 +79,11 @@ it('keeps one session id while GPS and the client center move together', () => {
     lat: second.lat,
     lon: second.lon,
   });
-  expect(mockP5Props.dataPoint).toEqual([]);
+  expect(mockP5Props.dataPoint).toHaveLength(1);
+  expect(mockP5Props.dataPoint[0]).toMatchObject({
+    key: 'stale-session',
+    leave: true,
+  });
   expect(mockP5Props.myId).toBe('session-a');
 
   act(() => {

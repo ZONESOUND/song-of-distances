@@ -50,3 +50,9 @@ Ending a session updates `leave: true` and `endedAt`; it never removes the node.
 Browser GPS updates overwrite the coordinates of the same active session rather
 than creating a new node for every sample. Closing or disconnecting preserves
 the last known coordinates as the historical node.
+
+Active sessions update `lastSeen` with a Firebase server timestamp every 15
+seconds. The display treats `leave: false` as active only while `lastSeen` (or a
+legacy `timeStamp`) is no more than 60 seconds old. This prevents stale sessions
+left by unreliable browser unload events from appearing permanently online; the
+database record and final coordinates remain untouched.

@@ -132,6 +132,7 @@ it('updates the active session in place and keeps its final coordinates', async 
     leave: true,
     endedAt: 'SERVER_TIMESTAMP',
   });
+  store.dispose();
 });
 
 it('keeps the last synchronized coordinates when Firebase disconnects', async () => {
@@ -166,4 +167,5 @@ it('keeps the last synchronized coordinates when Firebase disconnects', async ()
     leave: true,
     endedAt: 'SERVER_TIMESTAMP',
   });
+  store.dispose();
 });
