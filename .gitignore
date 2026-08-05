@@ -24,3 +24,4 @@ yarn-error.log*
 
 # sensitive data
 /src/config.js
+/private-backups/
