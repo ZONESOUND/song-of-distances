@@ -18,7 +18,10 @@ GPS, deterministic current/history fixtures, no Firebase connection, and no
 Socket.IO connection. The default rehearsal dataset contains 100 nodes, with
 exactly 10 active nodes. Its seeded Gaussian layout is denser near the centre
 while retaining a broad, irregular tail toward the outer rings. Fixture motion
-is off by default, so the active count remains stable during visual checks.
+is off by default, so the active count remains stable during visual checks. The
+preview uses 100 original, exhibition-style display names with short phrases,
+multiple languages, and emoji. They evoke the audience energy of the earlier
+installation without copying names from the production Firebase archive.
 
 The radar sweep length follows the canvas diagonal instead of using a fixed
 pixel length, so the beam reaches the edge on wide exhibition displays.

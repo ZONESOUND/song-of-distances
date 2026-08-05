@@ -2,6 +2,7 @@ import {
   createFixtureLayout,
   createFixtureSessionStore,
 } from './fixtureSessionStore';
+import {FIXTURE_NAMES, getFixtureName} from './fixtureNames';
 import {calcLayerFromDistance, projectGpsPoint} from '../spatialRules';
 
 it('contains both current and historical sessions without network access', () => {
@@ -63,6 +64,27 @@ it('creates one hundred random-looking nodes with exactly ten active', () => {
   expect(Math.min(...layers)).toBeLessThan(2);
   expect(Math.max(...layers)).toBeGreaterThan(25);
   expect(new Set(layers.map((layer) => layer.toFixed(6))).size).toBe(100);
+});
+
+it('uses unique exhibition-style names instead of engineering IDs', () => {
+  const store = createFixtureSessionStore({
+    center: {lat: 25.033, lon: 121.5654},
+    count: 100,
+    activeCount: 10,
+  });
+  let sessions;
+  store.subscribeSessions((value) => { sessions = value; });
+  const names = Object.values(sessions).map((session) => session.showId);
+  const namesWithEmoji = names.filter((name) => Array.from(name).some(
+    (character) => character.codePointAt(0) >= 0x1F000
+  ));
+
+  expect(FIXTURE_NAMES).toHaveLength(100);
+  expect(new Set(names).size).toBe(100);
+  expect(names.some((name) => /^F\d{3}$/.test(name))).toBe(false);
+  expect(namesWithEmoji.length).toBeGreaterThan(20);
+  expect(names.every((name) => Array.from(name).length <= 24)).toBe(true);
+  expect(getFixtureName(100)).toBe(`${FIXTURE_NAMES[0]} · 2`);
 });
 
 it('uses a reproducible high-variance Gaussian fixture layout', () => {

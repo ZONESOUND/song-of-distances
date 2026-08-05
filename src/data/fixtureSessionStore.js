@@ -1,4 +1,5 @@
 import {coordinateForLayer} from '../spatialRules';
+import {getFixtureName} from './fixtureNames';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -88,7 +89,7 @@ const createFixtureSessions = ({
     const isHistory = !activeIndices.has(index);
     sessions[id] = {
       key: id,
-      showId: `F${String(index + 1).padStart(3, '0')}`,
+      showId: getFixtureName(index),
       lat: position.lat,
       lon: position.lon,
       timeStamp: now - index * 45000,
