@@ -59,13 +59,26 @@ installation and builds on the current Mac/Node environment.
 
 ## Exhibition connection
 
-Copy `.env.example` to `.env.local` and opt in to a local Socket.IO relay:
+Install the included Socket.IO 4.8.3 relay dependencies, load
+`node-for-max/index.js` from a Max `node.script`, then start the exhibition
+preset:
+
+```sh
+npm ci --prefix node-for-max
+npm run start:exhibition
+```
+
+The preset opts in to the local relay with:
 
 ```text
 REACT_APP_SOCKET_MODE=client
 REACT_APP_SOCKET_URL=http://127.0.0.1:3001
 REACT_APP_OSC_OUTPUT=on
 ```
+
+Use the locally served `http://localhost:3000` page on the exhibition computer.
+The public GitHub Pages preview intentionally keeps Socket.IO off: GitHub Pages
+can host the browser artwork, but it cannot run the Node for Max relay.
 
 See [docs/exhibition-protocol.md](docs/exhibition-protocol.md) for the legacy
 `/gps/radio` and `/gps/trigger` message contract.

@@ -1,4 +1,4 @@
-import io from 'socket.io-client';
+import {io} from 'socket.io-client';
 import {runtimeConfig, assertSocketAccessIsSafe} from './runtimeConfig';
 import {makeOscEnvelope, OSC_EVENT} from './oscProtocol';
 import {publishRuntimeEvent} from './runtimeEvents';
@@ -10,7 +10,14 @@ const getSocket = () => {
     if (runtimeConfig.socketMode === 'off') return null;
     if (socket) return socket;
     assertSocketAccessIsSafe(runtimeConfig);
-    socket = io(runtimeConfig.socketUrl, {autoConnect: true});
+    socket = io(runtimeConfig.socketUrl, {
+        autoConnect: true,
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionDelay: 500,
+        reconnectionDelayMax: 3000,
+        timeout: 5000,
+    });
     socket.on('connect', () => {
         isSocketConnect = true;
         publishRuntimeEvent({type: 'socket', status: 'connected'});
@@ -19,6 +26,13 @@ const getSocket = () => {
     socket.on('disconnect', () => {
         isSocketConnect = false;
         publishRuntimeEvent({type: 'socket', status: 'disconnected'});
+    });
+    socket.on('connect_error', (error) => {
+        isSocketConnect = false;
+        publishRuntimeEvent({
+            type: 'socket',
+            status: `error: ${error.message}`,
+        });
     });
     socket.on(OSC_EVENT, (envelope) => {
         publishRuntimeEvent({type: 'osc', direction: 'in', envelope});

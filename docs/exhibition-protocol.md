@@ -13,7 +13,25 @@ layers, then becomes historical at its final coordinate. The interval can be
 changed with `REACT_APP_FIXTURE_MOTION_INTERVAL`, or disabled with
 `REACT_APP_FIXTURE_MOTION=false`.
 
-To feed a local Node for Max relay, configure:
+Install the Socket.IO v4 relay dependencies once:
+
+```sh
+npm ci --prefix node-for-max
+```
+
+Load `node-for-max/index.js` with `node.script` inside Max, then start the web
+artwork in exhibition mode:
+
+```sh
+npm run start:exhibition
+```
+
+Open `http://localhost:3000` on the exhibition computer. Its diagnostics should
+show `SOCKET CONNECTED` and `OSC ON`. The public GitHub Pages preview continues
+to use `SOCKET OFF`; a static host cannot run the local Node for Max process,
+and browsers may block an HTTPS page from contacting an HTTP loopback relay.
+
+This preset is equivalent to configuring:
 
 ```text
 REACT_APP_SOCKET_MODE=client
@@ -24,6 +42,20 @@ REACT_APP_OSC_OUTPUT=on
 Fixture mode rejects non-loopback Socket.IO URLs.
 
 ## Socket.IO compatibility
+
+The browser client and the included Node for Max relay are pinned to Socket.IO
+4.8.3. The relay listens only on `127.0.0.1:3001` by default, rejects Engine.IO
+v3 clients, limits packet size, and permits only local development origins.
+Override the port or comma-separated origins with
+`SOD_SOCKET_PORT` and `SOD_ALLOWED_ORIGINS` before starting `node.script`.
+
+Messages arriving from the browser leave the Node for Max outlet as:
+
+```text
+osc <address> <value...>
+```
+
+Send the same shape into `node.script` to broadcast from Max to the browser.
 
 The transport event name remains `osc` and the envelope remains:
 
