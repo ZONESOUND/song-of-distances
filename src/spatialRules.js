@@ -7,6 +7,9 @@ export const calcLayerFromDistance = (distance, globalScale, globalPow) =>
 export const calcRadarAngle = (radioSpeed, frameCount) =>
   (radioSpeed * frameCount / 60) % (2 * Math.PI) - Math.PI;
 
+export const calcRadarSweepLength = (width, height) =>
+  Math.hypot(width, height);
+
 export const didRadarCross = (lastAngle, currentAngle, pointAngle) =>
   ((lastAngle - pointAngle) * (currentAngle - pointAngle) <= 0) &&
   Math.abs(lastAngle - currentAngle) < 1;

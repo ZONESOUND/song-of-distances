@@ -9,7 +9,9 @@ it('defaults every unconfigured build to local fixture mode', () => {
   expect(runtimeConfig.locationMode).toBe('fixture');
   expect(runtimeConfig.socketMode).toBe('off');
   expect(runtimeConfig.oscOutputEnabled).toBe(false);
+  expect(runtimeConfig.fixtureCount).toBe(100);
   expect(runtimeConfig.fixtureActiveCount).toBe(10);
+  expect(runtimeConfig.fixtureMotionEnabled).toBe(false);
 });
 
 it('blocks the production Firebase project on the revival branch', () => {

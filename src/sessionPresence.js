@@ -15,5 +15,7 @@ export const isSessionActive = (
 
 export const withEffectivePresence = (session, now = Date.now()) => ({
   ...session,
-  leave: !isSessionActive(session, now),
+  leave: session && session.data && session.data.fixture === true
+    ? session.leave
+    : !isSessionActive(session, now),
 });

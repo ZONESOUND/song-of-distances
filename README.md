@@ -15,16 +15,39 @@ npm start
 
 Open <http://localhost:3000>. With no `.env.local`, the application uses fixed
 GPS, deterministic current/history fixtures, no Firebase connection, and no
-Socket.IO connection. One fixture visitor moves outward across the nine legacy
-distance layers and then remains at its final coordinate as a historical node.
-This rehearses the original work's leave-the-venue topology without touching
-real location data.
+Socket.IO connection. The default rehearsal dataset contains 100 nodes, with
+exactly 10 active nodes. Its seeded Gaussian layout is denser near the centre
+while retaining a broad, irregular tail toward the outer rings. Fixture motion
+is off by default, so the active count remains stable during visual checks.
+
+The radar sweep length follows the canvas diagonal instead of using a fixed
+pixel length, so the beam reaches the edge on wide exhibition displays.
 
 Run the checks with:
 
 ```sh
 npm test -- --watchAll=false
 npm run build
+```
+
+## Topology controls
+
+Press `H` while the artwork is open to show or hide the dat.GUI panel. The
+controls are saved for the current browser tab; use `還原原始參數` to return to
+the defaults.
+
+- `距離比例 globalScale`: overall geographic zoom. Increasing it moves the same
+  GPS separation farther from the centre.
+- `拓樸曲線 globalPow`: nonlinear near/far spacing. It changes the relationship
+  between inner and outer rings rather than applying a uniform zoom.
+- `雷達速度 radioSpeed`: angular speed of the scanning beam.
+
+The fixture defaults can be changed in `.env.local`:
+
+```text
+REACT_APP_FIXTURE_COUNT=100
+REACT_APP_FIXTURE_ACTIVE_COUNT=10
+REACT_APP_FIXTURE_MOTION=false
 ```
 
 The build still uses the legacy CRA/Webpack architecture. Webpack and Firebase

@@ -25,3 +25,13 @@ it('renders stale leave:false sessions as history without changing source data',
   expect(effective.leave).toBe(true);
   expect(stale.leave).toBe(false);
 });
+
+it('keeps fixture active state stable for long-running visual tests', () => {
+  const fixture = {
+    leave: false,
+    lastSeen: NOW - ACTIVE_SESSION_TIMEOUT_MS * 10,
+    data: {fixture: true},
+  };
+
+  expect(withEffectivePresence(fixture, NOW).leave).toBe(false);
+});

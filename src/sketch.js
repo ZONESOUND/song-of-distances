@@ -11,6 +11,7 @@ import {
 import {
     calcLayerFromDistance,
     calcRadarAngle,
+    calcRadarSweepLength,
     calcRingDiameter,
     didRadarCross,
 } from './spatialRules';
@@ -79,9 +80,8 @@ export default function sketch (p) {
         let num = p.int(p.frameCount / 4);
         if (num) {
             let threshold = calcR(10, configData.globalScale, configData.globalPow);
-            dataPoint = allDataPoint.slice(-num).map(dataPointMap).filter((e) =>
-                (e.data && e.data.fixtureViewport) || e.dist < threshold
-            );
+            dataPoint = allDataPoint.slice(-num).map(dataPointMap)
+                .filter((e) => e.dist < threshold);
         }
         enableUpdate = num > allDataPoint.length ? false : true;
     }
@@ -188,17 +188,18 @@ function drawCenter(p, centerName) {
 
 function drawSwipeLine(p, radioDeg) {
     p.push()
+        const sweepLength = calcRadarSweepLength(p.width, p.height)
         p.stroke(255,200)
         p.strokeWeight(2)
-        p.line(0,0,Math.cos(radioDeg)*1000, Math.sin(radioDeg)*1000)
+        p.line(0,0,Math.cos(radioDeg)*sweepLength, Math.sin(radioDeg)*sweepLength)
         p.noStroke()
         let degSpan = 20
         for(var i=0;i < degSpan;i++){
             p.fill(255,50/ degSpan*(degSpan-i) )
             p.beginShape()
             p.vertex(0,0)
-            p.vertex(Math.cos(radioDeg-0.02*(i-1))*1000,Math.sin(radioDeg-0.02*(i-1))*1000)
-            p.vertex(Math.cos(radioDeg-0.02*i)*1000,Math.sin(radioDeg-0.02*i)*1000)
+            p.vertex(Math.cos(radioDeg-0.02*(i-1))*sweepLength,Math.sin(radioDeg-0.02*(i-1))*sweepLength)
+            p.vertex(Math.cos(radioDeg-0.02*i)*sweepLength,Math.sin(radioDeg-0.02*i)*sweepLength)
             p.endShape(p.CLOSE)
         }
     p.pop()
@@ -372,16 +373,6 @@ function calcDeg(radioSpeed, frameCount) {
 }
 
 function getPos(p, configData, obj){
-
-    const fixtureViewport = obj.data && obj.data.fixtureViewport;
-    if (fixtureViewport &&
-        Number.isFinite(Number(fixtureViewport.x)) &&
-        Number.isFinite(Number(fixtureViewport.y))){
-      return p.createVector(
-        Number(fixtureViewport.x) * p.width / 2,
-        Number(fixtureViewport.y) * p.height / 2
-      )
-    }
 
     if (obj.lon && obj.lat){
       let lon = (obj.lon-configData.lon)*configData.globalScale

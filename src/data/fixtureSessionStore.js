@@ -4,42 +4,82 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 
 const GLOBAL_SCALE = 250000;
 const GLOBAL_POW = 0.58;
+const FIXTURE_SEED = 20260801;
+const FIXTURE_LAYER_SIGMA = 14;
+const MAX_FIXTURE_LAYER = 32;
 
-const radicalInverse = (value, base) => {
-  let result = 0;
-  let fraction = 1 / base;
-  let current = value;
-  while (current > 0) {
-    result += fraction * (current % base);
-    current = Math.floor(current / base);
-    fraction /= base;
-  }
-  return result;
+const createSeededRandom = (seed) => {
+  let state = seed >>> 0;
+  return () => {
+    state += 0x6D2B79F5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value = value ^ (
+      value + Math.imul(value ^ (value >>> 7), value | 61)
+    );
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
 };
 
-export const fixtureViewportPosition = (index) => ({
-  x: (radicalInverse(index + 1, 2) * 2 - 1) * 0.94,
-  y: (radicalInverse(index + 1, 3) * 2 - 1) * 0.90,
-});
+const sampleGaussian = (random) => {
+  const first = Math.max(Number.EPSILON, random());
+  const second = random();
+  return Math.sqrt(-2 * Math.log(first)) * Math.cos(2 * Math.PI * second);
+};
+
+export const createFixtureLayout = (
+  count,
+  seed = FIXTURE_SEED
+) => {
+  const random = createSeededRandom(seed);
+  return Array.from({length: count}, () => ({
+    angle: random() * Math.PI * 2,
+    layer: Math.min(
+      MAX_FIXTURE_LAYER,
+      0.5 + Math.abs(sampleGaussian(random)) * FIXTURE_LAYER_SIGMA
+    ),
+  }));
+};
+
+const selectActiveIndices = ({
+  count,
+  activeCount,
+  seed,
+  excludedIndex,
+}) => {
+  const random = createSeededRandom(seed ^ 0xA5A5A5A5);
+  const candidates = Array.from({length: count}, (_, index) => index)
+    .filter((index) => index !== excludedIndex);
+  for (let index = candidates.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [candidates[index], candidates[swapIndex]] =
+      [candidates[swapIndex], candidates[index]];
+  }
+  return new Set(candidates.slice(0, Math.min(activeCount, candidates.length)));
+};
 
 const createFixtureSessions = ({
   center,
   count,
   activeCount,
+  seed,
+  excludedActiveIndex,
   now = Date.now(),
 }) => {
   const sessions = {};
   const resolvedActiveCount = Math.min(count, Math.max(0, activeCount));
-  const activeIndices = new Set();
-  for (let activeIndex = 0; activeIndex < resolvedActiveCount; activeIndex += 1) {
-    activeIndices.add(count - resolvedActiveCount + activeIndex);
-  }
+  const activeIndices = selectActiveIndices({
+    count,
+    activeCount: resolvedActiveCount,
+    seed,
+    excludedIndex: excludedActiveIndex,
+  });
+  const layout = createFixtureLayout(count, seed);
   for (let index = 0; index < count; index += 1) {
-    const angle = (index * 137.508) * Math.PI / 180;
-    const ring = 1 + (index % 9);
+    const {angle, layer} = layout[index];
     const position = coordinateForLayer(
       center,
-      ring,
+      layer,
       angle,
       GLOBAL_SCALE,
       GLOBAL_POW
@@ -58,7 +98,7 @@ const createFixtureSessions = ({
       ...(isHistory ? {endedAt: now - index * 30000} : {}),
       data: {
         fixture: true,
-        fixtureViewport: fixtureViewportPosition(index),
+        fixtureLayer: layer,
       },
     };
   }
@@ -69,6 +109,7 @@ export const createFixtureSessionStore = ({
   center,
   count,
   activeCount = 10,
+  seed = FIXTURE_SEED,
   motionEnabled = false,
   motionIntervalMs = 1500,
 }) => {
@@ -77,6 +118,8 @@ export const createFixtureSessionStore = ({
     center,
     count,
     activeCount: Math.max(0, activeCount - movingSessionCount),
+    seed,
+    excludedActiveIndex: movingSessionCount ? 0 : null,
   });
   let nextId = count + 1;
   const listeners = new Set();
@@ -94,7 +137,6 @@ export const createFixtureSessionStore = ({
       lastSeen: Date.now(),
       data: {
         ...sessions['fixture-0001'].data,
-        fixtureViewport: null,
         fixtureMoving: true,
       },
     };

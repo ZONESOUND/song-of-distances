@@ -1,6 +1,6 @@
 import {
+  createFixtureLayout,
   createFixtureSessionStore,
-  fixtureViewportPosition,
 } from './fixtureSessionStore';
 import {calcLayerFromDistance, projectGpsPoint} from '../spatialRules';
 
@@ -18,50 +18,66 @@ it('contains both current and historical sessions without network access', () =>
   expect(Object.values(sessions).some((session) => session.leave === true)).toBe(true);
 
   const center = {lat: 25.033, lon: 121.5654};
-  const layers = Object.values(sessions).map((session) => {
+  const values = Object.values(sessions);
+  const layers = values.map((session) => {
     const point = projectGpsPoint(session, center, 250000, 0.58);
-    return Math.round(calcLayerFromDistance(point.distance, 250000, 0.58));
+    return calcLayerFromDistance(point.distance, 250000, 0.58);
   });
-  expect(new Set(layers)).toEqual(new Set([1, 2, 3, 4, 5, 6, 7, 8]));
+  layers.forEach((layer, index) => {
+    expect(layer).toBeCloseTo(values[index].data.fixtureLayer, 8);
+  });
+
+  const originalProjection = projectGpsPoint(
+    values[0], center, 250000, 0.58
+  );
+  const scaledProjection = projectGpsPoint(
+    values[0], center, 500000, 0.58
+  );
+  const curvedProjection = projectGpsPoint(
+    values[0], center, 250000, 0.8
+  );
+  expect(scaledProjection.distance).not.toBeCloseTo(
+    originalProjection.distance,
+    3
+  );
+  expect(curvedProjection.distance).not.toBeCloseTo(
+    originalProjection.distance,
+    3
+  );
 });
 
-it('spreads fixture nodes across the viewport with ten or fewer active nodes', () => {
+it('creates one hundred random-looking nodes with exactly ten active', () => {
   const store = createFixtureSessionStore({
     center: {lat: 25.033, lon: 121.5654},
-    count: 180,
+    count: 100,
     activeCount: 10,
   });
   let sessions;
   store.subscribeSessions((value) => { sessions = value; });
   const values = Object.values(sessions);
-  const viewport = values.map((session) => session.data.fixtureViewport);
-  const activeViewport = values
-    .filter((session) => session.leave === false)
-    .map((session) => session.data.fixtureViewport);
+  const layers = values.map((session) => session.data.fixtureLayer);
 
   expect(values.filter((session) => session.leave === false)).toHaveLength(10);
-  expect(Math.min(...viewport.map((position) => position.x))).toBeLessThan(-0.8);
-  expect(Math.max(...viewport.map((position) => position.x))).toBeGreaterThan(0.8);
-  expect(Math.min(...viewport.map((position) => position.y))).toBeLessThan(-0.8);
-  expect(Math.max(...viewport.map((position) => position.y))).toBeGreaterThan(0.8);
-  expect(new Set(viewport.map((position) =>
-    `${position.x},${position.y}`
-  )).size).toBe(180);
-  expect(Math.min(...activeViewport.map((position) => position.x)))
-    .toBeLessThan(-0.8);
-  expect(Math.max(...activeViewport.map((position) => position.x)))
-    .toBeGreaterThan(0.8);
-  expect(Math.min(...activeViewport.map((position) => position.y)))
-    .toBeLessThan(-0.7);
-  expect(Math.max(...activeViewport.map((position) => position.y)))
-    .toBeGreaterThan(0.7);
+  expect(layers.filter((layer) => layer <= 9).length)
+    .toBeGreaterThan(layers.filter((layer) => layer > 20).length);
+  expect(Math.min(...layers)).toBeLessThan(2);
+  expect(Math.max(...layers)).toBeGreaterThan(25);
+  expect(new Set(layers.map((layer) => layer.toFixed(6))).size).toBe(100);
 });
 
-it('uses a deterministic low-discrepancy fixture layout', () => {
-  expect(fixtureViewportPosition(0).x).toBeCloseTo(0, 8);
-  expect(fixtureViewportPosition(0).y).toBeCloseTo(-0.3, 8);
-  expect(fixtureViewportPosition(1).x).toBeCloseTo(-0.47, 8);
-  expect(fixtureViewportPosition(1).y).toBeCloseTo(0.3, 8);
+it('uses a reproducible high-variance Gaussian fixture layout', () => {
+  const first = createFixtureLayout(100, 42);
+  const second = createFixtureLayout(100, 42);
+  const layers = first.map((point) => point.layer);
+  const mean = layers.reduce((sum, layer) => sum + layer, 0) / layers.length;
+  const variance = layers.reduce(
+    (sum, layer) => sum + Math.pow(layer - mean, 2),
+    0
+  ) / layers.length;
+
+  expect(first).toEqual(second);
+  expect(Math.sqrt(variance)).toBeGreaterThan(7);
+  expect(new Set(first.map((point) => point.angle.toFixed(6))).size).toBe(100);
 });
 
 it('marks a session historical without deleting it', async () => {

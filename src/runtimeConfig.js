@@ -35,14 +35,14 @@ export const runtimeConfig = {
     lon: readNumber(process.env.REACT_APP_FIXED_LON, 121.5654),
   },
   fixtureCount: Math.max(0, Math.floor(
-    readNumber(process.env.REACT_APP_FIXTURE_COUNT, 180)
+    readNumber(process.env.REACT_APP_FIXTURE_COUNT, 100)
   )),
   fixtureActiveCount: Math.max(0, Math.floor(
     readNumber(process.env.REACT_APP_FIXTURE_ACTIVE_COUNT, 10)
   )),
   fixtureMotionEnabled: readBoolean(
     process.env.REACT_APP_FIXTURE_MOTION,
-    dataMode === 'fixture'
+    false
   ),
   fixtureMotionIntervalMs: Math.max(250, Math.floor(
     readNumber(process.env.REACT_APP_FIXTURE_MOTION_INTERVAL, 1500)

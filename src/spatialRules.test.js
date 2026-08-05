@@ -1,6 +1,7 @@
 import {
   calcLayerFromDistance,
   calcRadarAngle,
+  calcRadarSweepLength,
   coordinateForLayer,
   didRadarCross,
   projectGpsPoint,
@@ -33,6 +34,12 @@ it('places deterministic fixture coordinates on all nine legacy layers', () => {
     );
     expect(resolvedLayer).toBeCloseTo(layer, 8);
   }
+});
+
+it('extends the radar beyond every corner of a widescreen canvas', () => {
+  const sweepLength = calcRadarSweepLength(1920, 1080);
+  expect(sweepLength).toBeCloseTo(Math.hypot(1920, 1080), 8);
+  expect(sweepLength).toBeGreaterThan(1920);
 });
 
 it('preserves radar frame angles and ignores the wraparound jump', () => {
