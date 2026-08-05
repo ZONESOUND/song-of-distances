@@ -1,4 +1,4 @@
-# Song of Distance — revival branch
+# Song of Distances — 2026 revival branch
 
 This branch restores the maintainable source for the installation while keeping
 the published `gh-pages` branch untouched.

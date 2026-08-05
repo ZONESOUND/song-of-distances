@@ -2,7 +2,7 @@
   "name": "gps-react",
   "version": "0.1.0",
   "private": true,
-  "homepage": "http://zonesound.github.io/song-of-distance",
+  "homepage": "https://zonesound.github.io/song-of-distances",
   "dependencies": {
     "@babel/core": "7.6.0",
     "@svgr/webpack": "4.3.2",

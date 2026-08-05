@@ -1,4 +1,4 @@
-# Song of Distance — exhibition web protocol
+# Song of Distances — exhibition web protocol
 
 This branch defaults to a completely local fixture mode. It does not connect to
 Firebase or Socket.IO unless those services are explicitly enabled.

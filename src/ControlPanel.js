@@ -273,7 +273,7 @@ class ControlPanel extends Component {
         });
 
         this.GUI = new dat.GUI({
-            name: 'Song of Distance — Topology',
+            name: 'Song of Distances — Topology',
             width: 320,
             hideable: false,
         });
